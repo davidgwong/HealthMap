@@ -100,11 +100,13 @@ class HealthMap {
   private _cities: Cities;
   private _blocksInLargestCity: number;
   private _intakeAgeThreshold: number;
+  private _highLevelMap: string[][];
 
   constructor() {
     this._cities = {} as Cities;
     this._blocksInLargestCity = 0;
     this._intakeAgeThreshold = 0;
+    this._highLevelMap= [];
   }
 
   public async initializeHealthMap(filePath: string) {
@@ -128,6 +130,33 @@ class HealthMap {
     this._intakeAgeThreshold = age;
   }
 
+  public getIntakeAgeThreshold() {
+    return this._intakeAgeThreshold;
+  }
+
+  private updateHighLevelMap() {
+    function updateCityMap(city: City, blocksInLargestCity: number) {
+      let cityMap: string[] = Array(blocksInLargestCity).fill("x");
+      city.households.forEach((household) => {
+        let foundUnvaccinatedPerson = household.inhabitants.find(
+          (person) => person.isVaccinated == false
+        );
+        if (foundUnvaccinatedPerson) {
+          cityMap[household.blockNum] = "H";
+        } else {
+          cityMap[household.blockNum] = "F";
+        }
+      });
+      city.clinics.forEach((clinic) => {
+        cityMap[clinic.blockNum] = "C";
+      });
+      return cityMap;
+    }
+    this._highLevelMap[0] = updateCityMap(this._cities.Burnaby, this._blocksInLargestCity);
+    this._highLevelMap[1] = updateCityMap(this._cities.Vancouver, this._blocksInLargestCity);
+    this._highLevelMap[2] = updateCityMap(this._cities.Richmond, this._blocksInLargestCity);
+  }
+
   /* 
   H,F,F,C,C,C // Burnaby
   H,F,C,x,x,x // Vancouver
@@ -138,34 +167,8 @@ class HealthMap {
   The "C" symbols on the map represent Clinics.
   */
   public printMap() {
-    function printCity(city: City, blocksInLargestCity: number) {
-      let printData = "";
-      for (let i = 0; i < blocksInLargestCity; i++) {
-        let foundHousehold = city.households.find(
-          (household) => household.blockNum === i
-        );
-        if (foundHousehold) {
-          let foundUnvaccinatedPerson = foundHousehold.inhabitants.find(
-            (person) => person.isVaccinated == false
-          );
-          if (foundUnvaccinatedPerson) {
-            printData += "H";
-          } else printData += "F";
-        } else {
-          let foundClinic = city.clinics.find(
-            (clinic) => clinic.blockNum === i
-          );
-          if (foundClinic) {
-            printData += "C";
-          } else printData += "x";
-        }
-        printData += " ";
-      }
-      console.log(printData);
-    }
-    printCity(this._cities.Burnaby, this._blocksInLargestCity);
-    printCity(this._cities.Vancouver, this._blocksInLargestCity);
-    printCity(this._cities.Richmond, this._blocksInLargestCity);
+    this.updateHighLevelMap();
+    console.log(this._highLevelMap);
   }
 
   /*
@@ -176,7 +179,9 @@ class HealthMap {
       -- Add the person to the nearest available clinic (queue).
       -- That person's isVaccinated status is set to true.
   */
-  public registerForShots() {}
+  public registerForShots() {
+
+  }
 }
 
 export {
