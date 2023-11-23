@@ -1,8 +1,16 @@
 import { HealthMap } from "./Map.ts";
 
-async function main() {
+let currentIntake = 50;
+
+async function buildHealthMap(filePath: string) {
   const map = new HealthMap();
-  await map.initializeHealthMap("./data.json");
+  await map.initializeHealthMap(filePath);
+  map.setIntakeAgeThreshold(currentIntake);
+  return map;
+}
+
+async function main() {
+  const map = await buildHealthMap("./data.json");
   map.printMap();
   console.log("---End of Map---");
   // map.registerForShots();

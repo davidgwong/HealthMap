@@ -99,10 +99,12 @@ class ClinicClass {
 class HealthMap {
   private _cities: Cities;
   private _blocksInLargestCity: number;
+  private _intakeAgeThreshold: number;
 
   constructor() {
     this._cities = {} as Cities;
     this._blocksInLargestCity = 0;
+    this._intakeAgeThreshold = 0;
   }
 
   public async initializeHealthMap(filePath: string) {
@@ -122,6 +124,10 @@ class HealthMap {
       });
   }
 
+  public setIntakeAgeThreshold(age: number) {
+    this._intakeAgeThreshold = age;
+  }
+
   /* 
   H,F,F,C,C,C // Burnaby
   H,F,C,x,x,x // Vancouver
@@ -132,78 +138,45 @@ class HealthMap {
   The "C" symbols on the map represent Clinics.
   */
   public printMap() {
-    let printData = "";
-    for (let i = 0; i < this._blocksInLargestCity; i++) {
-      let foundHousehold = this._cities.Burnaby.households.find(
-        (household) => household.blockNum === i
-      );
-      if (foundHousehold) {
-        let foundUnvaccinatedPerson = foundHousehold.inhabitants.find(
-          (person) => person.isVaccinated == false
+    function printCity(city: City, blocksInLargestCity: number) {
+      let printData = "";
+      for (let i = 0; i < blocksInLargestCity; i++) {
+        let foundHousehold = city.households.find(
+          (household) => household.blockNum === i
         );
-        if (foundUnvaccinatedPerson) {
-          printData += "H";
-        } else printData += "F";
-      } else {
-        let foundClinic = this._cities.Burnaby.clinics.find(
-          (clinic) => clinic.blockNum === i
-        );
-        if (foundClinic) {
-          printData += "C";
-        } else printData += "x";
+        if (foundHousehold) {
+          let foundUnvaccinatedPerson = foundHousehold.inhabitants.find(
+            (person) => person.isVaccinated == false
+          );
+          if (foundUnvaccinatedPerson) {
+            printData += "H";
+          } else printData += "F";
+        } else {
+          let foundClinic = city.clinics.find(
+            (clinic) => clinic.blockNum === i
+          );
+          if (foundClinic) {
+            printData += "C";
+          } else printData += "x";
+        }
+        printData += " ";
       }
-      printData += " ";
+      console.log(printData);
     }
-    console.log(printData);
-
-    printData = "";
-    for (let i = 0; i < this._blocksInLargestCity; i++) {
-      let foundHousehold = this._cities.Vancouver.households.find(
-        (household) => household.blockNum === i
-      );
-      if (foundHousehold) {
-        let foundUnvaccinatedPerson = foundHousehold.inhabitants.find(
-          (person) => person.isVaccinated == false
-        );
-        if (foundUnvaccinatedPerson) {
-          printData += "H";
-        } else printData += "F";
-      } else {
-        let foundClinic = this._cities.Vancouver.clinics.find(
-          (clinic) => clinic.blockNum === i
-        );
-        if (foundClinic) {
-          printData += "C";
-        } else printData += "x";
-      }
-      printData += " ";
-    }
-    console.log(printData);
-
-    printData = "";
-    for (let i = 0; i < this._blocksInLargestCity; i++) {
-      let foundHousehold = this._cities.Richmond.households.find(
-        (household) => household.blockNum === i
-      );
-      if (foundHousehold) {
-        let foundUnvaccinatedPerson = foundHousehold.inhabitants.find(
-          (person) => person.isVaccinated == false
-        );
-        if (foundUnvaccinatedPerson) {
-          printData += "H";
-        } else printData += "F";
-      } else {
-        let foundClinic = this._cities.Richmond.clinics.find(
-          (clinic) => clinic.blockNum === i
-        );
-        if (foundClinic) {
-          printData += "C";
-        } else printData += "x";
-      }
-      printData += " ";
-    }
-    console.log(printData);
+    printCity(this._cities.Burnaby, this._blocksInLargestCity);
+    printCity(this._cities.Vancouver, this._blocksInLargestCity);
+    printCity(this._cities.Richmond, this._blocksInLargestCity);
   }
+
+  /*
+    Go through each member all Households within each city: 
+    - Check if a person isVaccinated already or not. If they are already vaccinated, skip them.
+    - If a person is NOT vaccinated, check if their age meets the currentIntake age. If it does not, skip them.
+    - If a person is NOT vaccinated and their age meets the currentIntake age, you must do the following:
+      -- Add the person to the nearest available clinic (queue).
+      -- That person's isVaccinated status is set to true.
+  */
+  public registerForShots() {}
 }
 
 export {
