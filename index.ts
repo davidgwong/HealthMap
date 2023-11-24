@@ -1,6 +1,6 @@
-import { HealthMap } from "./Map.ts";
+import { HealthMap, ReportMaker, SimpleReport, ComplexReport } from "./Map.ts";
 
-let currentIntake = 30;
+let currentIntake = 0;
 
 async function buildHealthMap(filePath: string) {
   const map = new HealthMap();
@@ -13,16 +13,15 @@ async function main() {
   const map = await buildHealthMap("./data.json");
   map.printMap();
   console.log("---End of Map---");
-  console.log(map._HouseholdMap.get("0-0"));
-  console.log(map._ClinicMap.get("0-3"));
   map.registerForShots();
-  console.log(map._HouseholdMap.get("0-0"));
-  console.log(map._ClinicMap.get("0-3"));
-  // const report = new ReportMaker(new ComplexReport(map));
-  // report.printDetails();
-  // console.log("---End of Report---")
-  // map.printMap();
-  // console.log("---End of Map---")
+  const complexReport = new ReportMaker(new ComplexReport(map));
+  complexReport.printDetails();
+  console.log("---End of Report---")
+  const simpleReport = new ReportMaker(new SimpleReport(map));
+  simpleReport.printDetails();
+  console.log("---End of Report---")
+  map.printMap();
+  console.log("---End of Map---")
 }
 
 main();

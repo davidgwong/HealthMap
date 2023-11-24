@@ -33,11 +33,6 @@ type BlockInfo = {
   label: "H" | "F" | "C" | "x";
 };
 
-type mapKey = {
-  cityKey: number;
-  blockKey: number;
-};
-
 /*
   A unique personal health number (string)
   A full name (string)
@@ -83,7 +78,7 @@ class DecoratedClinic {
   public name: string;
   public numOfStaff: number;
   public blockNum: number;
-  private waitlistQueue: Person[];
+  public waitlistQueue: Person[];
 
   constructor(clinic: Clinic) {
     this.name = clinic.name;
@@ -102,6 +97,10 @@ class DecoratedClinic {
 
   public size() {
     return this.waitlistQueue.length;
+  }
+
+  public getCurrentWaitTime() {
+    return this.waitlistQueue.length * 15;
   }
 }
 
@@ -251,13 +250,9 @@ class HealthMap {
       let right = currBlock + 1;
       if (currBlock > 0) left = currBlock - 1;
       if (currBlock > city.length - 1) right = currBlock;
-      console.log("currBlock: " + currBlock + " left: " + left + " right: " + right);
-      while ((city[left].label !== "C") && (city[right].label !== "C")) {
+      while (city[left].label !== "C" && city[right].label !== "C") {
         if (left > 0) left -= 1;
         if (right < city.length - 1) right += 1;
-        // console.log("currBlock: " + currBlock + " left: " + left + " right: " + right);
-        // console.log(city[left].label + " " + (city[right].label === "C"));
-        // if (right == 3) var input = prompt("Enter data here", "");
       }
       if (city[left].label == "C") return left;
       else return right;
@@ -290,10 +285,85 @@ class HealthMap {
               }
             }
           });
+          let foundUnvaccinatedPerson = currHousehold!.inhabitants.find(
+            (person) => person.isVaccinated == false
+          );
+          if (!foundUnvaccinatedPerson)
+            this._highLevelMap[cityIndex][blockIndex].label = "F";
           this._HouseholdMap.set(cityIndex + "-" + blockIndex, currHousehold!);
         }
       });
     });
+  }
+}
+
+class IReport {
+  protected _clinics: Map<string, DecoratedClinic>;
+  constructor(map: HealthMap) {
+    this._clinics = map._ClinicMap;
+  }
+
+  public printDetails() {
+    this._clinics.forEach((clinic) => {
+      let printout = clinic.name + ": ";
+      if (clinic.waitlistQueue.length == 0) printout += "(none).";
+      else {
+        clinic.waitlistQueue.forEach((person, index) => {
+          printout += person.fullName;
+          if (index == clinic.waitlistQueue.length - 1) printout += ".";
+          else printout += ", ";
+        });
+      }
+      console.log(printout);
+    });
+  }
+}
+
+/*
+  Simple report should print the following:
+    - For each clinic in each region:
+      -- Name of clinic
+      -- People in line up
+*/
+class SimpleReport extends IReport {}
+
+/* 
+  Complex Report should print the following:
+    - For each clinic in each region:
+        -- Average wait time
+        -- Name of clinic
+        -- People in line up
+ */
+class ComplexReport extends IReport {
+  public printDetails() {
+    this._clinics.forEach((clinic) => {
+      let printout = clinic.name + ": ";
+      if (clinic.waitlistQueue.length == 0) printout += "(none).";
+      else {
+        clinic.waitlistQueue.forEach((person, index) => {
+          printout += person.fullName;
+          if (index == clinic.waitlistQueue.length - 1) printout += ".";
+          else printout += ", ";
+        });
+      }
+      console.log(printout);
+      const averageWaitTime = clinic.getCurrentWaitTime() / clinic.numOfStaff;
+      if (averageWaitTime == 1)
+        console.log("Average wait time: " + averageWaitTime + " minute.");
+      else console.log("Average wait time: " + averageWaitTime + " minutes.");
+    });
+  }
+}
+
+class ReportMaker {
+  report: IReport;
+
+  constructor(report: IReport) {
+    this.report = report;
+  }
+
+  printDetails() {
+    this.report.printDetails();
   }
 }
 
@@ -307,4 +377,7 @@ export {
   Cities,
   DecoratedClinic,
   DecoratedHousehold,
+  SimpleReport,
+  ComplexReport,
+  ReportMaker,
 };
