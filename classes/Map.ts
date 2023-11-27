@@ -1,126 +1,15 @@
 import fs from "fs/promises";
-
-type Person = {
-  phn: string;
-  fullName: string;
-  isVaccinated: boolean;
-  age: number;
-};
-
-type Household = {
-  blockNum: number;
-  inhabitants: Person[];
-};
-
-type Clinic = {
-  name: string;
-  staff: number;
-  blockNum: number;
-};
-
-type City = {
-  households: Household[];
-  clinics: Clinic[];
-};
-
-type Cities = {
-  Burnaby: City;
-  Vancouver: City;
-  Richmond: City;
-};
-
-type BlockInfo = {
-  label: "H" | "F" | "C" | "x";
-};
-
-/*
-  A unique personal health number (string)
-  A full name (string)
-  A vaccination status (true means they are already vaccinated, false means they are not). 
-  An age (number) 
-*/
-class PersonClass {
-  private _phn: string;
-  private _fullName: string;
-  private _isVaccinated: boolean;
-  private _age: number;
-
-  constructor(
-    phn: string,
-    fullName: string,
-    isVaccinated: boolean,
-    age: number
-  ) {
-    this._phn = phn;
-    this._fullName = fullName;
-    this._isVaccinated = isVaccinated;
-    this._age = age;
-  }
-
-  public isVaccinated() {
-    return this._isVaccinated;
-  }
-}
-
-/* 
-  A Clinic resides within a city, and has:
-  A name (string)
-  Number of Staff (An integer representing the number of working nursing staff). 
-  A block number which represents where the clinic resides on the block.
-  A Waitlist Queue:
-    - This is a queue data structure. In other words, the first person inserted into the queue will be the first person in line to get their COVID shot.
-    - A queue at a minimum supports the following:
-          enqueue(person) Add a person to the queue
-          dequeue(); Remove a person from the queue
-          size() Check the number of people in the queue
-*/
-class DecoratedClinic {
-  public name: string;
-  public numOfStaff: number;
-  public blockNum: number;
-  public waitlistQueue: Person[];
-
-  constructor(clinic: Clinic) {
-    this.name = clinic.name;
-    this.numOfStaff = clinic.staff;
-    this.blockNum = clinic.blockNum;
-    this.waitlistQueue = [];
-  }
-
-  public enqueue(person: Person) {
-    this.waitlistQueue.push(person);
-  }
-
-  public dequeue() {
-    this.waitlistQueue.shift();
-  }
-
-  public size() {
-    return this.waitlistQueue.length;
-  }
-
-  public getCurrentWaitTime() {
-    return this.waitlistQueue.length * 15;
-  }
-}
-
-class DecoratedHousehold {
-  public blockNum: number;
-  public inhabitants: Person[];
-
-  constructor(household: Household) {
-    this.blockNum = household.blockNum;
-    this.inhabitants = household.inhabitants;
-  }
-}
+import { City, Cities, BlockInfo } from "./types";
+import { DecoratedClinic } from "./Clinic";
+import { DecoratedHousehold } from "./Household";
 
 class HealthMap {
   private _cities: Cities;
   private _blocksInLargestCity: number;
   private _intakeAgeThreshold: number;
   private _highLevelMap: BlockInfo[][];
-  public _HouseholdMap: Map<string, DecoratedHousehold>;
-  public _ClinicMap: Map<string, DecoratedClinic>;
+  private _HouseholdMap: Map<string, DecoratedHousehold>;
+  private _ClinicMap: Map<string, DecoratedClinic>;
 
   constructor() {
     this._cities = {} as Cities;
@@ -160,6 +49,21 @@ class HealthMap {
     return this._highLevelMap;
   }
 
+  public getClinicMap() {
+    return this._ClinicMap;
+  }
+
+  public getHouseholdMap() {
+    return this._HouseholdMap;
+  }
+
+  /*
+   * initializeCityMap() initializes the HealthMap of each city.
+   * It initializes the city's highLevelMap to determine if a block a fully vaccinated household, partially vaccinated household, or a clinic.
+   * Then, it sets the HouseholdMap and ClinicMap's map data structure with the key-value of (cityNum)-(blockNum): DecoratedHousehold | DecoratedClinic.
+   * highLevelMap uses a data structure of [][] for O(1) access. Then, we can search the corresponding block's value with average O(1) search.
+   * Separate map data structure for Households and Clinics so that we don't need to do filtering.
+   */
   private initializeCityMap(
     city: City,
     cityIndex: number,
@@ -237,6 +141,25 @@ class HealthMap {
   }
 
   /*
+   * Set nearest Clinic for each Household once to save time in case there is more than one registerForShots() called.
+   */
+  private setHouseholdNearestClinic(
+    currHouseholdBlock: number,
+    city: BlockInfo[]
+  ) {
+    let left = 0;
+    let right = currHouseholdBlock + 1;
+    if (currHouseholdBlock > 0) left = currHouseholdBlock - 1;
+    if (currHouseholdBlock > city.length - 1) right = currHouseholdBlock;
+    while (city[left].label !== "C" && city[right].label !== "C") {
+      if (left > 0) left -= 1;
+      if (right < city.length - 1) right += 1;
+    }
+    if (city[left].label == "C") return left;
+    else return right;
+  }
+
+  /*
     Go through each member all Households within each city: 
     - Check if a person isVaccinated already or not. If they are already vaccinated, skip them.
     - If a person is NOT vaccinated, check if their age meets the currentIntake age. If it does not, skip them.
@@ -297,87 +220,4 @@ class HealthMap {
   }
 }
 
-class IReport {
-  protected _clinics: Map<string, DecoratedClinic>;
-  constructor(map: HealthMap) {
-    this._clinics = map._ClinicMap;
-  }
-
-  public printDetails() {
-    this._clinics.forEach((clinic) => {
-      let printout = clinic.name + ": ";
-      if (clinic.waitlistQueue.length == 0) printout += "(none).";
-      else {
-        clinic.waitlistQueue.forEach((person, index) => {
-          printout += person.fullName;
-          if (index == clinic.waitlistQueue.length - 1) printout += ".";
-          else printout += ", ";
-        });
-      }
-      console.log(printout);
-    });
-  }
-}
-
-/*
-  Simple report should print the following:
-    - For each clinic in each region:
-      -- Name of clinic
-      -- People in line up
-*/
-class SimpleReport extends IReport {}
-
-/* 
-  Complex Report should print the following:
-    - For each clinic in each region:
-        -- Average wait time
-        -- Name of clinic
-        -- People in line up
- */
-class ComplexReport extends IReport {
-  public printDetails() {
-    this._clinics.forEach((clinic) => {
-      let printout = clinic.name + ": ";
-      if (clinic.waitlistQueue.length == 0) printout += "(none).";
-      else {
-        clinic.waitlistQueue.forEach((person, index) => {
-          printout += person.fullName;
-          if (index == clinic.waitlistQueue.length - 1) printout += ".";
-          else printout += ", ";
-        });
-      }
-      console.log(printout);
-      const averageWaitTime = clinic.getCurrentWaitTime() / clinic.numOfStaff;
-      if (averageWaitTime == 1)
-        console.log("Average wait time: " + averageWaitTime + " minute.");
-      else console.log("Average wait time: " + averageWaitTime + " minutes.");
-    });
-  }
-}
-
-class ReportMaker {
-  report: IReport;
-
-  constructor(report: IReport) {
-    this.report = report;
-  }
-
-  printDetails() {
-    this.report.printDetails();
-  }
-}
-
-export {
-  HealthMap,
-  Person,
-  PersonClass,
-  Clinic,
-  Household,
-  City,
-  Cities,
-  DecoratedClinic,
-  DecoratedHousehold,
-  SimpleReport,
-  ComplexReport,
-  ReportMaker,
-};
+export { HealthMap };
