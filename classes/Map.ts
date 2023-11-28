@@ -124,6 +124,7 @@ class HealthMap {
       2,
       this._blocksInLargestCity
     );
+    this.setHouseholdNearestClinic();
   }
 
   /* 
@@ -226,7 +227,7 @@ class HealthMap {
           block.label == "H"
         ) {
           let currHousehold = this._HouseholdMap[cityIndex].get(blockIndex);
-          let nearestClinic = nearestClinicIndex(blockIndex, city);
+          let nearestClinic = currHousehold?.nearestClinicBlockNum!;
           currHousehold!.inhabitants.forEach((inhabitant, inhabitantIndex) => {
             if (!inhabitant.isVaccinated) {
               if (inhabitant.age > this._intakeAgeThreshold) {
