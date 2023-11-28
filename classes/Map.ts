@@ -24,7 +24,6 @@ class HealthMap {
     this._ClinicMap[0] = new Map();
     this._ClinicMap[1] = new Map();
     this._ClinicMap[2] = new Map();
-
   }
 
   public async initializeHealthMap(filePath: string) {
@@ -148,21 +147,54 @@ class HealthMap {
 
   /*
    * Set nearest Clinic for each Household once to save time in case there is more than one registerForShots() called.
+   * Algorithm to improve on O(n^2) by storing left, right, and nearest in the DecoratedHousehold object.
    */
-  private setHouseholdNearestClinic(
-    currHouseholdBlock: number,
-    city: BlockInfo[]
-  ) {
-    let left = 0;
-    let right = currHouseholdBlock + 1;
-    if (currHouseholdBlock > 0) left = currHouseholdBlock - 1;
-    if (currHouseholdBlock > city.length - 1) right = currHouseholdBlock;
-    while (city[left].label !== "C" && city[right].label !== "C") {
-      if (left > 0) left -= 1;
-      if (right < city.length - 1) right += 1;
+  public setHouseholdNearestClinic() {
+    for (let cityIndex = 0; cityIndex < 3; cityIndex++) {
+      this._HouseholdMap[cityIndex].forEach((household, key) => {
+        let left = key - 1;
+        let right = key + 1;
+
+        let leftLabel = "x";
+        let rightLabel = "x";
+        if (left >= 0) leftLabel = this._highLevelMap[cityIndex][left].label;
+        if (right < this._blocksInLargestCity)
+          rightLabel = this._highLevelMap[cityIndex][right].label;
+        while (
+          leftLabel != "C" &&
+          rightLabel != "C" &&
+          (left > 0 || right < this._blocksInLargestCity - 1)
+        ) {
+          let leftHousehold = this._HouseholdMap[cityIndex].get(left);
+          if (leftHousehold?.nearestClinicBlockNum) {
+            left = leftHousehold?.nearestClinicLeft!;
+            right = leftHousehold?.nearestClinicRight!;
+          }
+          if (left >= 0) leftLabel = this._highLevelMap[cityIndex][left].label;
+          if (right < this._blocksInLargestCity)
+            rightLabel = this._highLevelMap[cityIndex][right].label;
+          if (leftLabel != "C" && left > 0) {
+            left -= 1;
+          }
+          if (rightLabel != "C" && right < this._blocksInLargestCity - 1) {
+            right += 1;
+          }
+        }
+        household.nearestClinicLeft = left;
+        household.nearestClinicRight = right;
+        if (left < 0) household.nearestClinicBlockNum = right;
+        else if (right > this._blocksInLargestCity - 1)
+          household.nearestClinicBlockNum = left;
+        else if (key - left < right - key) {
+          if (leftLabel == "C") household.nearestClinicBlockNum = left;
+          else household.nearestClinicBlockNum = right;
+        } else {
+          if (rightLabel == "C") household.nearestClinicBlockNum = right;
+          else household.nearestClinicBlockNum = left;
+        }
+        this._HouseholdMap[cityIndex].set(key, household);
+      });
     }
-    if (city[left].label == "C") return left;
-    else return right;
   }
 
   /*
@@ -199,14 +231,12 @@ class HealthMap {
             if (!inhabitant.isVaccinated) {
               if (inhabitant.age > this._intakeAgeThreshold) {
                 currHousehold!.inhabitants[inhabitantIndex].isVaccinated = true;
-                let updatedClinic = this._ClinicMap[cityIndex].get(nearestClinic);
+                let updatedClinic =
+                  this._ClinicMap[cityIndex].get(nearestClinic);
                 updatedClinic!.enqueue(
                   currHousehold!.inhabitants[inhabitantIndex]
                 );
-                this._ClinicMap[cityIndex].set(
-                  nearestClinic,
-                  updatedClinic!
-                );
+                this._ClinicMap[cityIndex].set(nearestClinic, updatedClinic!);
               }
             }
           });
