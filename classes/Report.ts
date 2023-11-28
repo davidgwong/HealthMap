@@ -2,7 +2,7 @@ import { HealthMap } from "./Map";
 import { DecoratedClinic } from "./Clinic";
 
 class IReport {
-  protected _clinics: Map<string, DecoratedClinic>;
+  protected _clinics: Map<number, DecoratedClinic>[];
   constructor(map: HealthMap) {
     this._clinics = map.getClinicMap();
   }
@@ -21,8 +21,10 @@ class IReport {
   }
 
   public printDetails() {
-    this._clinics.forEach((clinic) => {
-      this._printClinicQueue(clinic);
+    this._clinics.forEach((clinicsInCityArray) => {
+      clinicsInCityArray.forEach((clinic) => {
+        this._printClinicQueue(clinic);
+      });
     });
   }
 }
@@ -51,9 +53,11 @@ class ComplexReport extends IReport {
   }
 
   public printDetails() {
-    this._clinics.forEach((clinic) => {
-      this._printClinicQueue(clinic);
-      this._printAverageWaitTime(clinic);
+    this._clinics.forEach((clinicsInCityArray) => {
+      clinicsInCityArray.forEach((clinic) => {
+        this._printClinicQueue(clinic);
+        this._printAverageWaitTime(clinic);
+      });
     });
   }
 }

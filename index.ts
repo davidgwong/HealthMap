@@ -6,6 +6,7 @@ let currentIntake = 0;
 async function buildHealthMap(filePath: string) {
   const map = new HealthMap();
   await map.initializeHealthMap(filePath);
+  map.initializeHighLevelMap();
   map.setIntakeAgeThreshold(currentIntake);
   return map;
 }

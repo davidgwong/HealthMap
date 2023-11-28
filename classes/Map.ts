@@ -8,16 +8,23 @@ class HealthMap {
   private _blocksInLargestCity: number;
   private _intakeAgeThreshold: number;
   private _highLevelMap: BlockInfo[][];
-  private _HouseholdMap: Map<string, DecoratedHousehold>;
-  private _ClinicMap: Map<string, DecoratedClinic>;
+  private _HouseholdMap: Map<number, DecoratedHousehold>[];
+  private _ClinicMap: Map<number, DecoratedClinic>[];
 
   constructor() {
     this._cities = {} as Cities;
     this._blocksInLargestCity = 0;
     this._intakeAgeThreshold = 0;
     this._highLevelMap = [];
-    this._HouseholdMap = new Map();
-    this._ClinicMap = new Map();
+    this._HouseholdMap = Array(3);
+    this._HouseholdMap[0] = new Map();
+    this._HouseholdMap[1] = new Map();
+    this._HouseholdMap[2] = new Map();
+    this._ClinicMap = Array(3);
+    this._ClinicMap[0] = new Map();
+    this._ClinicMap[1] = new Map();
+    this._ClinicMap[2] = new Map();
+
   }
 
   public async initializeHealthMap(filePath: string) {
@@ -85,8 +92,8 @@ class HealthMap {
           label: "F",
         };
       }
-      this._HouseholdMap.set(
-        cityIndex + "-" + household.blockNum,
+      this._HouseholdMap[cityIndex].set(
+        household.blockNum,
         new DecoratedHousehold(household)
       );
     });
@@ -94,15 +101,15 @@ class HealthMap {
       cityMap[clinic.blockNum] = {
         label: "C",
       };
-      this._ClinicMap.set(
-        cityIndex + "-" + clinic.blockNum,
+      this._ClinicMap[cityIndex].set(
+        clinic.blockNum,
         new DecoratedClinic(clinic)
       );
     });
     return cityMap;
   }
 
-  private initializeHighLevelMap() {
+  public initializeHighLevelMap() {
     this._highLevelMap[0] = this.initializeCityMap(
       this._cities.Burnaby,
       0,
@@ -130,7 +137,6 @@ class HealthMap {
   The "C" symbols on the map represent Clinics.
   */
   public printMap() {
-    this.initializeHighLevelMap();
     this._highLevelMap.forEach((city) => {
       let printout = "";
       city.forEach((block) => {
@@ -184,25 +190,21 @@ class HealthMap {
     this._highLevelMap.forEach((city, cityIndex) => {
       city.forEach((block, blockIndex) => {
         if (
-          this._HouseholdMap.get(cityIndex + "-" + blockIndex) &&
+          this._HouseholdMap[cityIndex].get(blockIndex) &&
           block.label == "H"
         ) {
-          let currHousehold = this._HouseholdMap.get(
-            cityIndex + "-" + blockIndex
-          );
+          let currHousehold = this._HouseholdMap[cityIndex].get(blockIndex);
           let nearestClinic = nearestClinicIndex(blockIndex, city);
           currHousehold!.inhabitants.forEach((inhabitant, inhabitantIndex) => {
             if (!inhabitant.isVaccinated) {
               if (inhabitant.age > this._intakeAgeThreshold) {
                 currHousehold!.inhabitants[inhabitantIndex].isVaccinated = true;
-                let updatedClinic = this._ClinicMap.get(
-                  cityIndex + "-" + nearestClinic
-                );
+                let updatedClinic = this._ClinicMap[cityIndex].get(nearestClinic);
                 updatedClinic!.enqueue(
                   currHousehold!.inhabitants[inhabitantIndex]
                 );
-                this._ClinicMap.set(
-                  cityIndex + "-" + nearestClinic,
+                this._ClinicMap[cityIndex].set(
+                  nearestClinic,
                   updatedClinic!
                 );
               }
@@ -213,7 +215,7 @@ class HealthMap {
           );
           if (!foundUnvaccinatedPerson)
             this._highLevelMap[cityIndex][blockIndex].label = "F";
-          this._HouseholdMap.set(cityIndex + "-" + blockIndex, currHousehold!);
+          this._HouseholdMap[cityIndex].set(blockIndex, currHousehold!);
         }
       });
     });
