@@ -10,6 +10,10 @@ class HealthMap {
   private _highLevelMap: BlockInfo[][];
   private _HouseholdMap: Map<number, DecoratedHousehold>[];
   private _ClinicMap: Map<number, DecoratedClinic>[];
+  private _unvaccHouseholdBlockNums: number[][]; // To implement later
+  // Further optimization by storing all the blockNums that need to register for shots.
+  // Store the blockNums in an additional data structure so that the program 
+  // doesn't need to loop through the 2D array containing all the blockNums.
 
   constructor() {
     this._cities = {} as Cities;
@@ -24,6 +28,7 @@ class HealthMap {
     this._ClinicMap[0] = new Map();
     this._ClinicMap[1] = new Map();
     this._ClinicMap[2] = new Map();
+    this._unvaccHouseholdBlockNums = Array(3);
   }
 
   public async initializeHealthMap(filePath: string) {
@@ -66,7 +71,7 @@ class HealthMap {
   /*
    * initializeCityMap() initializes the HealthMap of each city.
    * It initializes the city's highLevelMap to determine if a block a fully vaccinated household, partially vaccinated household, or a clinic.
-   * Then, it sets the HouseholdMap and ClinicMap's map data structure with the key-value of (cityNum)-(blockNum): DecoratedHousehold | DecoratedClinic.
+   * Then, it sets the HouseholdMap and ClinicMap's map data structure with the key-value of [cityNum][blockNum]: DecoratedHousehold | DecoratedClinic.
    * highLevelMap uses a data structure of [][] for O(1) access. Then, we can search the corresponding block's value with average O(1) search.
    * Separate map data structure for Households and Clinics so that we don't need to do filtering.
    */
@@ -207,7 +212,7 @@ class HealthMap {
       -- That person's isVaccinated status is set to true.
   */
   public registerForShots() {
-    function nearestClinicIndex(currBlock: number, city: BlockInfo[]) {
+/*     function nearestClinicIndex(currBlock: number, city: BlockInfo[]) {
       let left = 0;
       let right = currBlock + 1;
       if (currBlock > 0) left = currBlock - 1;
@@ -218,10 +223,10 @@ class HealthMap {
       }
       if (city[left].label == "C") return left;
       else return right;
-    }
+    } */
 
     this._highLevelMap.forEach((city, cityIndex) => {
-      city.forEach((block, blockIndex) => {
+      city.forEach((block, blockIndex) => { // Todo: replace this loop with the data structure containing blockNums that need to register for shots.
         if (
           this._HouseholdMap[cityIndex].get(blockIndex) &&
           block.label == "H"
